@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32630.192
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnlayerCache.API", "..\Projects\UnlayerCache.API\UnlayerCache.API.csproj", "{FD5FC31F-D88F-4281-89ED-E3947C6A040C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnlayerCache.API.Tests", "..\Tests\UnlayerCache.API.Tests\UnlayerCache.API.Tests.csproj", "{D1D0F123-E597-461B-B8DA-B49DE1945AA0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FD5FC31F-D88F-4281-89ED-E3947C6A040C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FD5FC31F-D88F-4281-89ED-E3947C6A040C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FD5FC31F-D88F-4281-89ED-E3947C6A040C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FD5FC31F-D88F-4281-89ED-E3947C6A040C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D1D0F123-E597-461B-B8DA-B49DE1945AA0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D1D0F123-E597-461B-B8DA-B49DE1945AA0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D1D0F123-E597-461B-B8DA-B49DE1945AA0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D1D0F123-E597-461B-B8DA-B49DE1945AA0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {320428D6-D646-4E83-AF70-AA85AC6508F9}
+	EndGlobalSection
+EndGlobal
