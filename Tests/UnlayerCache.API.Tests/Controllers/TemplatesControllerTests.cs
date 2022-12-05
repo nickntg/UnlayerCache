@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
-using Newtonsoft.Json;
 using UnlayerCache.API.Controllers;
 using UnlayerCache.API.Models;
 using UnlayerCache.API.Services;
@@ -18,7 +17,7 @@ namespace UnlayerCache.API.Tests.Controllers
         {
             var dynamoMock = new Mock<IDynamoService>(MockBehavior.Strict);
             dynamoMock.Setup(x => x.GetUnlayerTemplate(It.IsAny<string>()))
-                .ReturnsAsync(new UnlayerCacheItem { Value = GetJsonTemplateResponse() }).Verifiable();
+                .ReturnsAsync("{\"data\":\"test\"}").Verifiable();
 
             var controller = GetController(dynamoMock.Object, null);
 
@@ -29,9 +28,6 @@ namespace UnlayerCache.API.Tests.Controllers
             var r = result as OkObjectResult;
             Assert.NotNull(r);
 
-            var data = r.Value as UnlayerTemplateResponse;
-            Assert.NotNull(data);
-
             dynamoMock.Verify(x => x.GetUnlayerTemplate(It.IsAny<string>()), Times.Once);
         }
 
@@ -40,13 +36,13 @@ namespace UnlayerCache.API.Tests.Controllers
         {
             var dynamoMock = new Mock<IDynamoService>(MockBehavior.Strict);
             dynamoMock.Setup(x => x.GetUnlayerTemplate(It.IsAny<string>()))
-                .ReturnsAsync((UnlayerCacheItem)null).Verifiable();
+                .ReturnsAsync((string)null).Verifiable();
             dynamoMock.Setup(x => x.SaveUnlayerTemplate(It.IsAny<UnlayerCacheItem>())).Returns(Task.CompletedTask)
                 .Verifiable();
 
             var unlayerMock = new Mock<IUnlayerService>(MockBehavior.Strict);
             unlayerMock.Setup(x => x.GetTemplate(It.IsAny<string>(), It.IsAny<string>()))
-                .ReturnsAsync(new UnlayerTemplateResponse()).Verifiable();
+                .ReturnsAsync("").Verifiable();
 
             var controller = GetController(dynamoMock.Object, unlayerMock.Object);
 
@@ -56,9 +52,6 @@ namespace UnlayerCache.API.Tests.Controllers
 
             var r = result as OkObjectResult;
             Assert.NotNull(r);
-
-            var data = r.Value as UnlayerTemplateResponse;
-            Assert.NotNull(data);
 
             dynamoMock.Verify(x => x.GetUnlayerTemplate(It.IsAny<string>()), Times.Once);
             dynamoMock.Verify(x => x.SaveUnlayerTemplate(It.IsAny<UnlayerCacheItem>()), Times.Once);
@@ -70,11 +63,11 @@ namespace UnlayerCache.API.Tests.Controllers
         {
             var dynamoMock = new Mock<IDynamoService>(MockBehavior.Strict);
             dynamoMock.Setup(x => x.GetUnlayerTemplate(It.IsAny<string>()))
-                .ReturnsAsync((UnlayerCacheItem)null).Verifiable();
+                .ReturnsAsync((string)null).Verifiable();
 
             var unlayerMock = new Mock<IUnlayerService>(MockBehavior.Strict);
             unlayerMock.Setup(x => x.GetTemplate(It.IsAny<string>(), It.IsAny<string>()))
-                .ReturnsAsync((UnlayerTemplateResponse)null).Verifiable();
+                .ReturnsAsync((string)null).Verifiable();
 
             var controller = GetController(dynamoMock.Object, unlayerMock.Object);
 
@@ -107,11 +100,6 @@ namespace UnlayerCache.API.Tests.Controllers
             Assert.Equal(500, r.StatusCode);
 
             dynamoMock.Verify(x => x.GetUnlayerTemplate(It.IsAny<string>()), Times.Once);
-        }
-
-        private string GetJsonTemplateResponse()
-        {
-            return JsonConvert.SerializeObject(new UnlayerTemplateResponse());
         }
 
         private TemplatesController GetController(IDynamoService dynamo, IUnlayerService unlayer)

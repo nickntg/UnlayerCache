@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using UnlayerCache.API.Controllers;
 using UnlayerCache.API.Models;
 using UnlayerCache.API.Services;
@@ -26,17 +28,18 @@ namespace UnlayerCache.API.Tests.Controllers
 
             var controller = GetController(dynamoMock.Object, new UnlayerService());
 
-            var result = controller.Post(new UnlayerRenderRequest
-                { design = new Design(), mergeTags = new Dictionary<string, string> { { "a", "replaced" } } }).Result;
+            var o = new ExpandoObject();
+            o.TryAdd("displayMode", "email");
+            o.TryAdd("mergeTags", new Dictionary<string, string> { { "a", "replaced" } });
+            o.TryAdd("design", "{\"some\": \"design\"}");
+            var result = controller.Post(JsonConvert.SerializeObject(o)).Result;
 
             Assert.NotNull(result);
 
             var r = result as OkObjectResult;
             Assert.NotNull(r);
 
-            var data = r.Value as UnlayerRenderResponse;
-            Assert.NotNull(data);
-            Assert.Equal(ReplacedTestContent, data.data.html);
+            Assert.Contains(ReplacedTestContent, JsonConvert.SerializeObject(r.Value));
 
             dynamoMock.Verify(x => x.GetUnlayerRender(It.IsAny<string>()), Times.Once);
         }
@@ -50,29 +53,30 @@ namespace UnlayerCache.API.Tests.Controllers
 
             var unlayerMock = new Mock<IUnlayerService>(MockBehavior.Strict);
             unlayerMock.Setup(x => x.RenderTemplate(It.IsAny<string>(), It.IsAny<UnlayerRenderRequest>()))
-                .ReturnsAsync(new UnlayerRenderResponse { data = new Data2 { html = TestContent } }).Verifiable();
-            unlayerMock.Setup(x => x.LocalRender(It.IsAny<UnlayerRenderResponse>(), It.IsAny<UnlayerRenderRequest>()))
-                .Callback(new Action<UnlayerRenderResponse, UnlayerRenderRequest>((response, request) =>
+                .ReturnsAsync(GetJsonUnlayerCleanRenderResponse).Verifiable();
+            unlayerMock.Setup(x => x.LocalRender(It.IsAny<JObject>(), It.IsAny<Dictionary<string,string>>()))
+                .Callback(new Action<JObject, Dictionary<string,string>>((response, request) =>
                     new UnlayerService().LocalRender(response, request))).Verifiable();
 
             var controller = GetController(dynamoMock.Object, unlayerMock.Object);
 
-            var result = controller.Post(new UnlayerRenderRequest
-                { design = new Design(), mergeTags = new Dictionary<string, string> { { "a", "replaced" } } }).Result;
+            var o = new ExpandoObject();
+            o.TryAdd("displayMode", "email");
+            o.TryAdd("mergeTags", new Dictionary<string, string> { { "a", "replaced" } });
+            o.TryAdd("design", "{\"some\": \"design\"}");
+            var result = controller.Post(JsonConvert.SerializeObject(o)).Result;
 
             Assert.NotNull(result);
 
             var r = result as OkObjectResult;
             Assert.NotNull(r);
 
-            var data = r.Value as UnlayerRenderResponse;
-            Assert.NotNull(data);
-            Assert.Equal(ReplacedTestContent, data.data.html);
+            Assert.Contains(ReplacedTestContent, JsonConvert.SerializeObject(r.Value));
 
-            dynamoMock.Verify(x => x.GetUnlayerRender(It.IsAny<string>()), Times.Once);
+			dynamoMock.Verify(x => x.GetUnlayerRender(It.IsAny<string>()), Times.Once);
             dynamoMock.Verify(x => x.SaveUnlayerRender(It.IsAny<UnlayerCacheItem>()), Times.Once);
             unlayerMock.Verify(x => x.RenderTemplate(It.IsAny<string>(), It.IsAny<UnlayerRenderRequest>()), Times.Once);
-            unlayerMock.Verify(x => x.LocalRender(It.IsAny<UnlayerRenderResponse>(), It.IsAny<UnlayerRenderRequest>()), Times.Once);
+            unlayerMock.Verify(x => x.LocalRender(It.IsAny<JObject>(), It.IsAny<Dictionary<string,string>>()), Times.Once);
         }
 
         [Fact]
@@ -83,14 +87,17 @@ namespace UnlayerCache.API.Tests.Controllers
 
             var unlayerMock = new Mock<IUnlayerService>(MockBehavior.Strict);
             unlayerMock.Setup(x => x.RenderTemplate(It.IsAny<string>(), It.IsAny<UnlayerRenderRequest>()))
-                .ReturnsAsync((UnlayerRenderResponse)null).Verifiable();
+                .ReturnsAsync((string)null).Verifiable();
 
             var controller = GetController(dynamoMock.Object, unlayerMock.Object);
+            
+            var o = new ExpandoObject();
+            o.TryAdd("displayMode", "email");
+            o.TryAdd("mergeTags", new Dictionary<string, string> { { "a", "replaced" } });
+            o.TryAdd("design", "{\"some\": \"design\"}");
+            var result = controller.Post(JsonConvert.SerializeObject(o)).Result;
 
-            var result = controller.Post(new UnlayerRenderRequest
-            { design = new Design(), mergeTags = new Dictionary<string, string> { { "a", "replaced" } } }).Result;
-
-            Assert.NotNull(result);
+			Assert.NotNull(result);
 
             var r = result as UnprocessableEntityResult;
             Assert.NotNull(r);
@@ -107,10 +114,13 @@ namespace UnlayerCache.API.Tests.Controllers
 
             var controller = GetController(dynamoMock.Object, null);
 
-            var result = controller.Post(new UnlayerRenderRequest
-                { design = new Design(), mergeTags = new Dictionary<string, string> { { "a", "replaced" } } }).Result;
+            var o = new ExpandoObject();
+            o.TryAdd("displayMode", "email");
+            o.TryAdd("mergeTags", new Dictionary<string, string> { { "a", "replaced" } });
+            o.TryAdd("design", "{\"some\": \"design\"}");
+            var result = controller.Post(JsonConvert.SerializeObject(o)).Result;
 
-            Assert.NotNull(result);
+			Assert.NotNull(result);
 
             var r = result as StatusCodeResult;
             Assert.NotNull(r);
@@ -129,12 +139,7 @@ namespace UnlayerCache.API.Tests.Controllers
 
         private string GetJsonUnlayerCleanRenderResponse()
         {
-            return JsonConvert.SerializeObject(GetUnlayerCleanRenderResponse());
-        }
-
-        private UnlayerRenderResponse GetUnlayerCleanRenderResponse()
-        {
-            return new UnlayerRenderResponse { data = new Data2 { html = TestContent } };
+            return $"{{\"data\":{{\"html\":\"{TestContent}\"}}}}";
         }
     }
 }
