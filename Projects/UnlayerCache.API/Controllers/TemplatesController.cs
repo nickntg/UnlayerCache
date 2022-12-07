@@ -56,7 +56,7 @@ namespace UnlayerCache.API.Controllers
                 await _dynamoService.SaveUnlayerTemplate(new UnlayerCacheItem
                     { Id = key, Value = uncached });
 
-                return Ok(uncached);
+                return Ok(JsonConvert.DeserializeObject<ExpandoObject>(uncached));
             }
             catch (Exception ex)
             {
