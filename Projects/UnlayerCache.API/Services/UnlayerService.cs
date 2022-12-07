@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -29,10 +31,22 @@ namespace UnlayerCache.API.Services
 
 	        var html = vanilla?.SelectToken("data.html")?.ToString();
 
-	        foreach (var kv in mergeTags)
+	        var r = new Regex("\\{{(.*?)\\}}");
+	        var matches = r.Matches(html);
+	        foreach (var m in matches)
 	        {
-	            html = html.Replace($"{{{{{kv.Key}}}}}", $"{kv.Value}");
+		        var variable = m.ToString();
+		        if (!string.IsNullOrEmpty(variable))
+				{
+					variable = variable.Replace("{{", string.Empty).Replace("}}", string.Empty);
+					if (!mergeTags.ContainsKey(variable))
+					{
+						mergeTags.Add(variable, string.Empty);
+					}
+				}
 	        }
+
+	        html = mergeTags.Aggregate(html, (current, kv) => current.Replace($"{{{{{kv.Key}}}}}", $"{kv.Value}"));
 
 	        ((JValue)vanilla?.SelectToken("data.html")).Value = html;
         }

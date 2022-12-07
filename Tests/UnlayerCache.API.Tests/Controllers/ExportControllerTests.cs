@@ -17,7 +17,7 @@ namespace UnlayerCache.API.Tests.Controllers
     public class ExportControllerTests
     {
         private const string TestContent         = "test {{a}} {{b}} {{c}}";
-        private const string ReplacedTestContent = "test replaced {{b}} {{c}}";
+        private const string ReplacedTestContent = "test replaced";
 
         [Fact]
         public void FoundInCache()

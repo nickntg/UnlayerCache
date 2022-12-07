@@ -2,7 +2,6 @@
 using System.Dynamic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using UnlayerCache.API.Models;
 using UnlayerCache.API.Services;
 using Xunit;
 
@@ -27,7 +26,7 @@ namespace UnlayerCache.API.Tests.Services
             service.LocalRender(plain,
 	            new Dictionary<string, string> { { "a", "b" }, { "c", "d" } });
 
-            Assert.Equal("test b {{b}} d", plain?.SelectToken("data.html")?.ToString());
+            Assert.Equal("test b  d", plain?.SelectToken("data.html")?.ToString());
         }
 
         [Fact]
