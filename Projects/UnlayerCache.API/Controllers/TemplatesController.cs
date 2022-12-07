@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Dynamic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -39,7 +40,7 @@ namespace UnlayerCache.API.Controllers
                 if (cached != null)
                 {
                     _logger.LogDebug($"{id} was found in the cache");
-                    return Ok(JsonConvert.DeserializeObject<UnlayerTemplateResponse>(cached.Value));
+                    return Ok(JsonConvert.DeserializeObject<ExpandoObject>(cached));
                 }
 
                 _logger.LogDebug($"{id} not cached, going to unlayer");
@@ -53,9 +54,9 @@ namespace UnlayerCache.API.Controllers
 
                 _logger.LogDebug($"Saving {id} to cache");
                 await _dynamoService.SaveUnlayerTemplate(new UnlayerCacheItem
-                    { Id = key, Value = JsonConvert.SerializeObject(uncached) });
+                    { Id = key, Value = uncached });
 
-                return Ok(uncached);
+                return Ok(JsonConvert.DeserializeObject<ExpandoObject>(uncached));
             }
             catch (Exception ex)
             {

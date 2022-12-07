@@ -10,7 +10,7 @@ namespace UnlayerCache.API.Services
     public interface IDynamoService
     {
         Task SaveUnlayerTemplate(UnlayerCacheItem model);
-        Task<UnlayerCacheItem> GetUnlayerTemplate(string id);
+        Task<string> GetUnlayerTemplate(string id);
         Task SaveUnlayerRender(UnlayerCacheItem model);
         Task<UnlayerCacheItem> GetUnlayerRender(string id);
     }
@@ -35,9 +35,10 @@ namespace UnlayerCache.API.Services
             await DynamoHelper<UnlayerCacheItem>.Save(model, _dynamo, UnlayerTemplatesTable);
         }
 
-        public async Task<UnlayerCacheItem> GetUnlayerTemplate(string id)
+        public async Task<string> GetUnlayerTemplate(string id)
         {
-            return await DynamoHelper<UnlayerCacheItem>.Get(id, _dynamo, UnlayerTemplatesTable);
+            var result = await DynamoHelper<UnlayerCacheItem>.Get(id, _dynamo, UnlayerTemplatesTable);
+            return result?.Value;
         }
 
         public async Task SaveUnlayerRender(UnlayerCacheItem model)
