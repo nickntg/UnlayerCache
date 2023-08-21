@@ -44,7 +44,7 @@ namespace UnlayerCache.API.Controllers
                 var cached = await _dynamoService.GetUnlayerRender(key);
                 if (cached == null)
                 {
-                    _logger.LogDebug("Going to unlayer to get the clean render");
+                    _logger.LogInformation("Going to unlayer to get the clean render for {key}", key);
                     /* We first request Unlayer to render the template without
                      any merge tags of our own. In this way, we'll get a clean
                      response that we can later reuse to do our own replacement. */
@@ -61,14 +61,14 @@ namespace UnlayerCache.API.Controllers
                         return UnprocessableEntity();
                     }
 
-                    _logger.LogDebug("Saving to cache");
+                    _logger.LogInformation("Saving to cache, key {key}", key);
 
                     cached = new UnlayerCacheItem { Id = key, Value = cleanRender };
 
                     await _dynamoService.SaveUnlayerRender(cached);
                 }
 
-                _logger.LogDebug("Replacing values in template");
+                _logger.LogInformation("Replacing values in template, key {key}", key);
 
                 var vanilla = (JObject)JsonConvert.DeserializeObject(cached.Value);
                 _unlayerService.LocalRender(vanilla, tags.mergeTags);
@@ -76,7 +76,7 @@ namespace UnlayerCache.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Unexpected exception\r\n{ex}");
+	            _logger.LogError("Unexpected exception\r\n{ex}", ex);
                 return new StatusCodeResult(500);
             }
         }

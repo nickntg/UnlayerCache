@@ -31,7 +31,7 @@ namespace UnlayerCache.API.Controllers
         {
             try
             {
-                _logger.LogDebug($"Get for {id}");
+	            _logger.LogInformation("Get for {id}", id);
 
                 var auth = Request.Headers["Authorization"];
                 var key = $"{auth}_{id}";
@@ -39,20 +39,20 @@ namespace UnlayerCache.API.Controllers
                 var cached = await _dynamoService.GetUnlayerTemplate(key);
                 if (cached != null)
                 {
-                    _logger.LogDebug($"{id} was found in the cache");
+	                _logger.LogInformation("{id} was found in the cache", id);
                     return Ok(JsonConvert.DeserializeObject<ExpandoObject>(cached));
                 }
 
-                _logger.LogDebug($"{id} not cached, going to unlayer");
+                _logger.LogInformation("{id} not cached, going to unlayer", id);
                 var uncached = await _unlayerService.GetTemplate(auth, id);
 
                 if (uncached == null)
                 {
-                    _logger.LogWarning($"{id} not found");
+	                _logger.LogWarning("{id} not found", id);
                     return NotFound();
                 }
 
-                _logger.LogDebug($"Saving {id} to cache");
+                _logger.LogInformation("Saving {id} to cache", id);
                 await _dynamoService.SaveUnlayerTemplate(new UnlayerCacheItem
                     { Id = key, Value = uncached });
 
@@ -60,7 +60,7 @@ namespace UnlayerCache.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Unexpected exception\r\n{ex}");
+	            _logger.LogError("Unexpected exception\r\n{ex}", ex);
                 return new StatusCodeResult(500);
             }
         }
