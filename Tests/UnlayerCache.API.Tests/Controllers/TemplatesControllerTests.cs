@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
+using FakeItEasy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
 using UnlayerCache.API.Controllers;
 using UnlayerCache.API.Models;
 using UnlayerCache.API.Services;
@@ -15,11 +15,11 @@ namespace UnlayerCache.API.Tests.Controllers
         [Fact]
         public void FoundInCache()
         {
-            var dynamoMock = new Mock<IDynamoService>(MockBehavior.Strict);
-            dynamoMock.Setup(x => x.GetUnlayerTemplate(It.IsAny<string>()))
-                .ReturnsAsync("{\"data\":\"test\"}").Verifiable();
+	        var dynamo = A.Fake<IDynamoService>(x => x.Strict());
+	        A.CallTo(() => dynamo.GetUnlayerTemplate(A<string>.Ignored))
+		        .Returns(Task.FromResult("{\"data\":\"test\"}"));
 
-            var controller = GetController(dynamoMock.Object, null);
+            var controller = GetController(dynamo, null);
 
             var result = controller.Get("abc").Result;
 
@@ -28,23 +28,25 @@ namespace UnlayerCache.API.Tests.Controllers
             var r = result as OkObjectResult;
             Assert.NotNull(r);
 
-            dynamoMock.Verify(x => x.GetUnlayerTemplate(It.IsAny<string>()), Times.Once);
+			A.CallTo(() => dynamo.GetUnlayerTemplate(A<string>.Ignored))
+				.MustHaveHappenedOnceExactly();
+
         }
 
         [Fact]
         public void NotFoundInCache()
         {
-            var dynamoMock = new Mock<IDynamoService>(MockBehavior.Strict);
-            dynamoMock.Setup(x => x.GetUnlayerTemplate(It.IsAny<string>()))
-                .ReturnsAsync((string)null).Verifiable();
-            dynamoMock.Setup(x => x.SaveUnlayerTemplate(It.IsAny<UnlayerCacheItem>())).Returns(Task.CompletedTask)
-                .Verifiable();
+	        var dynamo = A.Fake<IDynamoService>(x => x.Strict());
+	        A.CallTo(() => dynamo.GetUnlayerTemplate(A<string>.Ignored))
+		        .Returns(Task.FromResult((string)null));
+	        A.CallTo(() => dynamo.SaveUnlayerTemplate(A<UnlayerCacheItem>.Ignored))
+		        .Returns(Task.CompletedTask);
 
-            var unlayerMock = new Mock<IUnlayerService>(MockBehavior.Strict);
-            unlayerMock.Setup(x => x.GetTemplate(It.IsAny<string>(), It.IsAny<string>()))
-                .ReturnsAsync("").Verifiable();
+            var unlayer = A.Fake<IUnlayerService>(x => x.Strict());
+            A.CallTo(() => unlayer.GetTemplate(A<string>.Ignored, A<string>.Ignored))
+	            .Returns(Task.FromResult(string.Empty));
 
-            var controller = GetController(dynamoMock.Object, unlayerMock.Object);
+            var controller = GetController(dynamo, unlayer);
 
             var result = controller.Get("abc").Result;
 
@@ -53,23 +55,26 @@ namespace UnlayerCache.API.Tests.Controllers
             var r = result as OkObjectResult;
             Assert.NotNull(r);
 
-            dynamoMock.Verify(x => x.GetUnlayerTemplate(It.IsAny<string>()), Times.Once);
-            dynamoMock.Verify(x => x.SaveUnlayerTemplate(It.IsAny<UnlayerCacheItem>()), Times.Once);
-            unlayerMock.Verify(x => x.GetTemplate(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+            A.CallTo(() => dynamo.GetUnlayerTemplate(A<string>.Ignored))
+	            .MustHaveHappenedOnceExactly();
+            A.CallTo(() => dynamo.SaveUnlayerTemplate(A<UnlayerCacheItem>.Ignored))
+	            .MustHaveHappenedOnceExactly();
+            A.CallTo(() => unlayer.GetTemplate(A<string>.Ignored, A<string>.Ignored))
+	            .MustHaveHappenedOnceExactly();
         }
 
         [Fact]
         public void NotFoundInUnlayer()
         {
-            var dynamoMock = new Mock<IDynamoService>(MockBehavior.Strict);
-            dynamoMock.Setup(x => x.GetUnlayerTemplate(It.IsAny<string>()))
-                .ReturnsAsync((string)null).Verifiable();
+	        var dynamo = A.Fake<IDynamoService>(x => x.Strict());
+	        A.CallTo(() => dynamo.GetUnlayerTemplate(A<string>.Ignored))
+		        .Returns(Task.FromResult((string)null));
 
-            var unlayerMock = new Mock<IUnlayerService>(MockBehavior.Strict);
-            unlayerMock.Setup(x => x.GetTemplate(It.IsAny<string>(), It.IsAny<string>()))
-                .ReturnsAsync((string)null).Verifiable();
+			var unlayer = A.Fake<IUnlayerService>(x => x.Strict());
+			A.CallTo(() => unlayer.GetTemplate(A<string>.Ignored, A<string>.Ignored))
+				.Returns(Task.FromResult((string)null));
 
-            var controller = GetController(dynamoMock.Object, unlayerMock.Object);
+            var controller = GetController(dynamo, unlayer);
 
             var result = controller.Get("abc").Result;
 
@@ -78,18 +83,20 @@ namespace UnlayerCache.API.Tests.Controllers
             var r = result as NotFoundResult;
             Assert.NotNull(r);
 
-            dynamoMock.Verify(x => x.GetUnlayerTemplate(It.IsAny<string>()), Times.Once);
-            unlayerMock.Verify(x => x.GetTemplate(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
-        }
+            A.CallTo(() => dynamo.GetUnlayerTemplate(A<string>.Ignored))
+	            .MustHaveHappenedOnceExactly();
+			A.CallTo(() => unlayer.GetTemplate(A<string>.Ignored, A<string>.Ignored))
+				.MustHaveHappenedOnceExactly();
+		}
 
         [Fact]
         public void Throws()
         {
-            var dynamoMock = new Mock<IDynamoService>(MockBehavior.Strict);
-            dynamoMock.Setup(x => x.GetUnlayerTemplate(It.IsAny<string>()))
-                .Throws(new InvalidOperationException()).Verifiable();
+	        var dynamo = A.Fake<IDynamoService>(x => x.Strict());
+	        A.CallTo(() => dynamo.GetUnlayerTemplate(A<string>.Ignored))
+		        .Throws<InvalidOperationException>();
 
-            var controller = GetController(dynamoMock.Object, null);
+            var controller = GetController(dynamo, null);
 
             var result = controller.Get("abc").Result;
 
@@ -99,8 +106,9 @@ namespace UnlayerCache.API.Tests.Controllers
             Assert.NotNull(r);
             Assert.Equal(500, r.StatusCode);
 
-            dynamoMock.Verify(x => x.GetUnlayerTemplate(It.IsAny<string>()), Times.Once);
-        }
+			A.CallTo(() => dynamo.GetUnlayerTemplate(A<string>.Ignored))
+                .MustHaveHappenedOnceExactly();
+		}
 
         private TemplatesController GetController(IDynamoService dynamo, IUnlayerService unlayer)
         {

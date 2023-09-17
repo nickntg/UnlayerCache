@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Threading.Tasks;
+using FakeItEasy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnlayerCache.API.Controllers;
@@ -22,11 +22,12 @@ namespace UnlayerCache.API.Tests.Controllers
         [Fact]
         public void FoundInCache()
         {
-            var dynamoMock = new Mock<IDynamoService>(MockBehavior.Strict);
-            dynamoMock.Setup(x => x.GetUnlayerRender(It.IsAny<string>())).ReturnsAsync(new UnlayerCacheItem
-                { Value = GetJsonUnlayerCleanRenderResponse() }).Verifiable();
+	        var dynamo = A.Fake<IDynamoService>(x => x.Strict());
+	        A.CallTo(() => dynamo.GetUnlayerRender(A<string>.Ignored))
+		        .Returns(Task.FromResult(new UnlayerCacheItem
+			        { Value = GetJsonUnlayerCleanRenderResponse() }));
 
-            var controller = GetController(dynamoMock.Object, new UnlayerService());
+            var controller = GetController(dynamo, new UnlayerService());
 
             var o = new ExpandoObject();
             o.TryAdd("displayMode", "email");
@@ -41,24 +42,29 @@ namespace UnlayerCache.API.Tests.Controllers
 
             Assert.Contains(ReplacedTestContent, JsonConvert.SerializeObject(r.Value));
 
-            dynamoMock.Verify(x => x.GetUnlayerRender(It.IsAny<string>()), Times.Once);
+            A.CallTo(() => dynamo.GetUnlayerRender(A<string>.Ignored))
+	            .MustHaveHappenedOnceExactly();
         }
 
         [Fact]
         public void NotFoundInCache()
         {
-            var dynamoMock = new Mock<IDynamoService>(MockBehavior.Strict);
-            dynamoMock.Setup(x => x.GetUnlayerRender(It.IsAny<string>())).ReturnsAsync((UnlayerCacheItem)null).Verifiable();
-            dynamoMock.Setup(x => x.SaveUnlayerRender(It.IsAny<UnlayerCacheItem>())).Returns(Task.CompletedTask).Verifiable();
+	        var dynamo = A.Fake<IDynamoService>(x => x.Strict());
+	        A.CallTo(() => dynamo.GetUnlayerRender(A<string>.Ignored))
+		        .Returns(Task.FromResult((UnlayerCacheItem)null));
+	        A.CallTo(() => dynamo.SaveUnlayerRender(A<UnlayerCacheItem>.Ignored))
+		        .Returns(Task.CompletedTask);
 
-            var unlayerMock = new Mock<IUnlayerService>(MockBehavior.Strict);
-            unlayerMock.Setup(x => x.RenderTemplate(It.IsAny<string>(), It.IsAny<UnlayerRenderRequest>()))
-                .ReturnsAsync(GetJsonUnlayerCleanRenderResponse).Verifiable();
-            unlayerMock.Setup(x => x.LocalRender(It.IsAny<JObject>(), It.IsAny<Dictionary<string,string>>()))
-                .Callback(new Action<JObject, Dictionary<string,string>>((response, request) =>
-                    new UnlayerService().LocalRender(response, request))).Verifiable();
+			var unlayer = A.Fake<IUnlayerService>(x => x.Strict());
+			A.CallTo(() => unlayer.RenderTemplate(A<string>.Ignored, A<UnlayerRenderRequest>.Ignored))
+				.Returns(Task.FromResult(GetJsonUnlayerCleanRenderResponse()));
+			A.CallTo(() => unlayer.LocalRender(A<JObject>.Ignored, A<Dictionary<string, string>>.Ignored))
+				.Invokes((JObject response, Dictionary<string, string> request) =>
+				{
+					new UnlayerService().LocalRender(response, request);
+				});
 
-            var controller = GetController(dynamoMock.Object, unlayerMock.Object);
+            var controller = GetController(dynamo, unlayer);
 
             var o = new ExpandoObject();
             o.TryAdd("displayMode", "email");
@@ -73,23 +79,28 @@ namespace UnlayerCache.API.Tests.Controllers
 
             Assert.Contains(ReplacedTestContent, JsonConvert.SerializeObject(r.Value));
 
-			dynamoMock.Verify(x => x.GetUnlayerRender(It.IsAny<string>()), Times.Once);
-            dynamoMock.Verify(x => x.SaveUnlayerRender(It.IsAny<UnlayerCacheItem>()), Times.Once);
-            unlayerMock.Verify(x => x.RenderTemplate(It.IsAny<string>(), It.IsAny<UnlayerRenderRequest>()), Times.Once);
-            unlayerMock.Verify(x => x.LocalRender(It.IsAny<JObject>(), It.IsAny<Dictionary<string,string>>()), Times.Once);
-        }
+            A.CallTo(() => dynamo.GetUnlayerRender(A<string>.Ignored))
+	            .MustHaveHappenedOnceExactly();
+            A.CallTo(() => dynamo.SaveUnlayerRender(A<UnlayerCacheItem>.Ignored))
+				.MustHaveHappenedOnceExactly();
+			A.CallTo(() => unlayer.RenderTemplate(A<string>.Ignored, A<UnlayerRenderRequest>.Ignored))
+				.MustHaveHappenedOnceExactly();
+			A.CallTo(() => unlayer.LocalRender(A<JObject>.Ignored, A<Dictionary<string, string>>.Ignored))
+				.MustHaveHappenedOnceExactly();
+		}
 
         [Fact]
         public void NotFoundInCacheAndUnlayerThrows422()
         {
-            var dynamoMock = new Mock<IDynamoService>(MockBehavior.Strict);
-            dynamoMock.Setup(x => x.GetUnlayerRender(It.IsAny<string>())).ReturnsAsync((UnlayerCacheItem)null).Verifiable();
+	        var dynamo = A.Fake<IDynamoService>(x => x.Strict());
+	        A.CallTo(() => dynamo.GetUnlayerRender(A<string>.Ignored))
+		        .Returns(Task.FromResult((UnlayerCacheItem)null));
 
-            var unlayerMock = new Mock<IUnlayerService>(MockBehavior.Strict);
-            unlayerMock.Setup(x => x.RenderTemplate(It.IsAny<string>(), It.IsAny<UnlayerRenderRequest>()))
-                .ReturnsAsync((string)null).Verifiable();
+			var unlayer = A.Fake<IUnlayerService>(x => x.Strict());
+			A.CallTo(() => unlayer.RenderTemplate(A<string>.Ignored, A<UnlayerRenderRequest>.Ignored))
+				.Returns(Task.FromResult((string)null));
 
-            var controller = GetController(dynamoMock.Object, unlayerMock.Object);
+            var controller = GetController(dynamo, unlayer);
             
             var o = new ExpandoObject();
             o.TryAdd("displayMode", "email");
@@ -102,17 +113,20 @@ namespace UnlayerCache.API.Tests.Controllers
             var r = result as UnprocessableEntityResult;
             Assert.NotNull(r);
 
-            dynamoMock.Verify(x => x.GetUnlayerRender(It.IsAny<string>()), Times.Once);
-            unlayerMock.Verify(x => x.RenderTemplate(It.IsAny<string>(), It.IsAny<UnlayerRenderRequest>()), Times.Once);
+            A.CallTo(() => dynamo.GetUnlayerRender(A<string>.Ignored))
+				.MustHaveHappenedOnceExactly();
+			A.CallTo(() => unlayer.RenderTemplate(A<string>.Ignored, A<UnlayerRenderRequest>.Ignored))
+	            .MustHaveHappenedOnceExactly();
         }
 
         [Fact]
         public void ThrowsError()
         {
-            var dynamoMock = new Mock<IDynamoService>(MockBehavior.Strict);
-            dynamoMock.Setup(x => x.GetUnlayerRender(It.IsAny<string>())).ThrowsAsync(new InvalidOperationException());
+	        var dynamo = A.Fake<IDynamoService>(x => x.Strict());
+	        A.CallTo(() => dynamo.GetUnlayerRender(A<string>.Ignored))
+		        .Throws<InvalidOperationException>();
 
-            var controller = GetController(dynamoMock.Object, null);
+            var controller = GetController(dynamo, null);
 
             var o = new ExpandoObject();
             o.TryAdd("displayMode", "email");
@@ -126,8 +140,9 @@ namespace UnlayerCache.API.Tests.Controllers
             Assert.NotNull(r);
             Assert.Equal(500, r.StatusCode);
 
-            dynamoMock.Verify(x => x.GetUnlayerRender(It.IsAny<string>()), Times.Once);
-        }
+			A.CallTo(() => dynamo.GetUnlayerRender(A<string>.Ignored))
+				.MustHaveHappenedOnceExactly();
+		}
 
         private ExportController GetController(IDynamoService dynamo, IUnlayerService unlayer)
         {
