@@ -31,7 +31,7 @@ namespace UnlayerCache.API.Tests.Services
                     new() { { "a", "b2" }, { "c", "d2" } }
                 });
 
-            Assert.Equal("test b1  d1b2 d2", plain?.SelectToken("data.html")?.ToString());
+            Assert.Equal("test b1  d1b2  d2", plain?.SelectToken("data.html")?.ToString());
         }
 
         [Fact]
