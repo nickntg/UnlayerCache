@@ -26,8 +26,8 @@ namespace UnlayerCache.API.Services
 
         public void LocalRender(JObject vanilla, List<Dictionary<string, string>> mergeTags)
         {
-            const string startBlockFlag = "<START_BLOCK>";
-            const string endBlockFlag = "<END_BLOCK>";
+            const string startBlockFlag = "START_BLOCK";
+            const string endBlockFlag = "END_BLOCK";
 
             if (mergeTags == null || mergeTags.Count == 0)
             {

@@ -10,7 +10,7 @@ namespace UnlayerCache.API.Tests.Services
     public class UnlayerServiceTests
     {
         private const string TestContent = "test {{a}} {{b}} {{c}}";
-        private const string TestRepeatContent = "test <START_BLOCK>{{a}} {{b}} {{c}}<END_BLOCK>";
+        private const string TestRepeatContent = "test START_BLOCK{{a}} {{b}} {{c}}END_BLOCK";
 
         [Fact]
         public void ReplacesRepeatContent()
