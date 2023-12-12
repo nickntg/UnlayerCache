@@ -36,7 +36,7 @@ namespace UnlayerCache.API.Controllers
                 var auth = Request.Headers["Authorization"];
                 var o = (JObject)JsonConvert.DeserializeObject(request.ToString());
                 var displayMode = FindProperty(o, "displayMode");
-                UnlayerMergeTags tags = JsonConvert.DeserializeObject<UnlayerMergeTags>(request.ToString());
+                
                 var design = JsonConvert.DeserializeObject(FindProperty(o, "design"));
                 var key =
                     $"{auth}_{displayMode}_{Util.Hash.HashString(JsonConvert.SerializeObject(design))}";
@@ -71,8 +71,18 @@ namespace UnlayerCache.API.Controllers
                 _logger.LogInformation("Replacing values in template, key {key}", key);
 
                 var vanilla = (JObject)JsonConvert.DeserializeObject(cached.Value);
-                _unlayerService.LocalRender(vanilla, tags.mergeTags);
-				return Ok(JsonConvert.DeserializeObject<ExpandoObject>(vanilla.ToString()));
+                UnlayerMergeTags tags = JsonConvert.DeserializeObject<UnlayerMergeTags>(request.ToString());
+
+                if (tags.mergeTags != null)
+                {
+                    _unlayerService.LocalRender(vanilla, tags.mergeTags);
+                }
+                else if (tags.repeatMergeTags != null)
+                {
+                    _unlayerService.LocalRender(vanilla, tags.repeatMergeTags);
+                }
+
+                return Ok(JsonConvert.DeserializeObject<ExpandoObject>(vanilla.ToString()));
             }
             catch (Exception ex)
             {

@@ -39,7 +39,7 @@ namespace UnlayerCache.API.Controllers
                 var cached = await _dynamoService.GetUnlayerTemplate(key);
                 if (cached != null)
                 {
-	                _logger.LogInformation("{id} was found in the cache", id);
+                    _logger.LogInformation("{id} was found in the cache", id);
                     return Ok(JsonConvert.DeserializeObject<ExpandoObject>(cached));
                 }
 
