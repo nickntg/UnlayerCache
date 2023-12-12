@@ -42,7 +42,7 @@ namespace UnlayerCache.API.Controllers
                     $"{auth}_{displayMode}_{Util.Hash.HashString(JsonConvert.SerializeObject(design))}";
 
                 var cached = await _dynamoService.GetUnlayerRender(key);
-                if (true)
+                if (cached == null)
                 {
                     _logger.LogInformation("Going to unlayer to get the clean render for {key}", key);
                     /* We first request Unlayer to render the template without
