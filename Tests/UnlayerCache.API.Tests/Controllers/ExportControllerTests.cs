@@ -63,6 +63,11 @@ namespace UnlayerCache.API.Tests.Controllers
 				{
 					new UnlayerService().LocalRender(response, request);
 				});
+            A.CallTo(() => unlayer.LocalRender(A<JObject>.Ignored, A<List<Dictionary<string, string>>>.Ignored))
+                .Invokes((JObject response, List<Dictionary<string, string>> request) =>
+                {
+                    new UnlayerService().LocalRender(response, request);
+                });
 
             var controller = GetController(dynamo, unlayer);
 

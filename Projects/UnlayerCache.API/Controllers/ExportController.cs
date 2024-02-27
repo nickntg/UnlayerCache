@@ -73,14 +73,8 @@ namespace UnlayerCache.API.Controllers
                 var vanilla = (JObject)JsonConvert.DeserializeObject(cached.Value);
                 UnlayerMergeTags tags = JsonConvert.DeserializeObject<UnlayerMergeTags>(request.ToString());
 
-                if (tags.mergeTags != null)
-                {
-                    _unlayerService.LocalRender(vanilla, tags.mergeTags);
-                }
-                else if (tags.repeatMergeTags != null)
-                {
-                    _unlayerService.LocalRender(vanilla, tags.repeatMergeTags);
-                }
+                _unlayerService.LocalRender(vanilla, tags.repeatMergeTags);
+                _unlayerService.LocalRender(vanilla, tags.mergeTags);
 
                 return Ok(JsonConvert.DeserializeObject<ExpandoObject>(vanilla.ToString()));
             }
