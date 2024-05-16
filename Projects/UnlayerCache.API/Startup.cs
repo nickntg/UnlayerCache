@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
+using UnlayerCache.API.Models;
 using UnlayerCache.API.Services;
 
 namespace UnlayerCache.API;
@@ -24,6 +25,11 @@ public class Startup
 
     public void ConfigureServices(IServiceCollection services)
     {
+        var appSettingsSection = Configuration.GetSection("AppSettings");
+        services.Configure<AppSettings>(appSettingsSection);
+        var appSettings = appSettingsSection.Get<AppSettings>();
+        services.AddSingleton(appSettings!);
+
         services.AddControllers();
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(options =>
