@@ -70,6 +70,22 @@ namespace UnlayerCache.API.Services
                 await dynamo.PutItemAsync(table, lst);
             }
 
+            public static async Task Delete(T model, IAmazonDynamoDB dynamo, string table)
+            {
+                var request = new DeleteItemRequest
+                {
+                    TableName = table,
+                    Key = new Dictionary<string, AttributeValue>
+                    {
+                        {
+                            UnlayerId, new AttributeValue { S =  model.Id }
+                        }
+                    }
+                };
+
+                await dynamo.DeleteItemAsync(request);
+            }
+
             public static async Task<T> Get(string id, IAmazonDynamoDB dynamo, string table)
             {
                 var idCondition = new Condition
@@ -93,12 +109,26 @@ namespace UnlayerCache.API.Services
                     return null;
                 }
 
-                return (T)new UnlayerCacheItem
+                var item = new UnlayerCacheItem
                 {
                     Id = result.Items[0][UnlayerId].S,
                     ExpiresAt = Convert.ToInt64(result.Items[0][UnlayerExpiresAt].N),
                     Value = result.Items[0][UnlayerValue].S
                 };
+
+                if (DateTimeOffset.UtcNow.ToUnixTimeSeconds() > item.ExpiresAt)
+                {
+                    /*
+                     * Unfortunately, there are too many conditions where
+                     * dynamo may have not automatically cleared the item
+                     * based on the TTL. So we do the dirty work.
+                     */
+                    await Delete((T)item, dynamo, table);
+
+                    return null;
+                }
+
+                return (T)item;
             }
         }
     }
