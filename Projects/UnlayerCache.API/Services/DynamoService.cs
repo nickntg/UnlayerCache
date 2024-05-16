@@ -23,16 +23,18 @@ namespace UnlayerCache.API.Services
         private const string UnlayerTemplatesTable = "unlayer-templates";
         private const string UnlayerRendersTable   = "unlayer-renders";
 
+        private readonly AppSettings _settings;
         private readonly IAmazonDynamoDB _dynamo;
 
-        public DynamoService(IAmazonDynamoDB dynamo)
+        public DynamoService(AppSettings settings, IAmazonDynamoDB dynamo)
         {
+            _settings = settings;
             _dynamo = dynamo;
         }
 
         public async Task SaveUnlayerTemplate(UnlayerCacheItem model)
         {
-            await DynamoHelper<UnlayerCacheItem>.Save(model, _dynamo, UnlayerTemplatesTable);
+            await DynamoHelper<UnlayerCacheItem>.Save(model, _dynamo, UnlayerTemplatesTable, _settings.ExpiryInMinutes);
         }
 
         public async Task<string> GetUnlayerTemplate(string id)
@@ -43,7 +45,7 @@ namespace UnlayerCache.API.Services
 
         public async Task SaveUnlayerRender(UnlayerCacheItem model)
         {
-            await DynamoHelper<UnlayerCacheItem>.Save(model, _dynamo, UnlayerRendersTable);
+            await DynamoHelper<UnlayerCacheItem>.Save(model, _dynamo, UnlayerRendersTable, _settings.ExpiryInMinutes);
         }
 
         public async Task<UnlayerCacheItem> GetUnlayerRender(string id)
@@ -53,7 +55,7 @@ namespace UnlayerCache.API.Services
 
         internal class DynamoHelper<T> where T: UnlayerCacheItem
         {
-            public static async Task Save(T model, IAmazonDynamoDB dynamo, string table)
+            public static async Task Save(T model, IAmazonDynamoDB dynamo, string table, int cacheExpiryInMinutes)
             {
                 var lst = new Dictionary<string, AttributeValue>
                 {
@@ -61,7 +63,7 @@ namespace UnlayerCache.API.Services
                     { UnlayerValue, new AttributeValue { S = model.Value } },
                     {
                         UnlayerExpiresAt,
-                        new AttributeValue { N = DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeSeconds().ToString() }
+                        new AttributeValue { N = DateTimeOffset.UtcNow.AddMinutes(cacheExpiryInMinutes).ToUnixTimeSeconds().ToString() }
                     }
                 };
 
