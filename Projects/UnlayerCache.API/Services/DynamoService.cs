@@ -81,7 +81,7 @@ namespace UnlayerCache.API.Services
 
         public async Task SaveUnlayerTemplate(UnlayerCacheItem model)
         {
-            await DynamoHelper.Save(model, _dynamo, MjmlTemplatesTable, _settings.ExpiryInMinutes);
+            await DynamoHelper.Save(model, _dynamo, UnlayerTemplatesTable, _settings.ExpiryInMinutes);
         }
 
         public async Task<string> GetUnlayerTemplate(string id)
