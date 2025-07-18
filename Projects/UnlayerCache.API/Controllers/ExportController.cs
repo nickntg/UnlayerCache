@@ -42,7 +42,7 @@ namespace UnlayerCache.API.Controllers
                     $"{auth}_{displayMode}_{Util.Hash.HashString(JsonConvert.SerializeObject(design))}";
 
                 var cached = await _dynamoService.GetUnlayerRender(key);
-                if (cached == null)
+                if (cached is null)
                 {
                     _logger.LogInformation("Going to unlayer to get the clean render for {key}", key);
                     /* We first request Unlayer to render the template without
@@ -55,7 +55,7 @@ namespace UnlayerCache.API.Controllers
 	                    mergeTags = new Dictionary<string, string>()
                     });
 
-                    if (cleanRender == null)
+                    if (cleanRender is null)
                     {
                         _logger.LogWarning("Unlayer responded with 422");
                         return UnprocessableEntity();

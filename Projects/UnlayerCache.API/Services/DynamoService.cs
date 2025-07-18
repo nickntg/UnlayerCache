@@ -1,9 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Amazon.DynamoDBv2;
+﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using UnlayerCache.API.Models;
+using Condition = Amazon.DynamoDBv2.Model.Condition;
 
 namespace UnlayerCache.API.Services
 {
@@ -13,6 +15,11 @@ namespace UnlayerCache.API.Services
         Task<string> GetUnlayerTemplate(string id);
         Task SaveUnlayerRender(UnlayerCacheItem model);
         Task<UnlayerCacheItem> GetUnlayerRender(string id);
+        Task<MjmlTemplate> SaveMjmlTemplate(MjmlTemplate template);
+        Task<MjmlTemplate> GetMjmlTemplate(string id);
+        Task<MjmlTemplate> UpdateMjmlTemplate(MjmlTemplate template);
+        Task DeleteMjmlTemplate(string id);
+        Task<IList<MjmlTemplate>> ListMjmlTemplates();
     }
 
     public class DynamoService : IDynamoService
@@ -22,6 +29,7 @@ namespace UnlayerCache.API.Services
         private const string UnlayerValue          = "value";
         private const string UnlayerTemplatesTable = "unlayer-templates";
         private const string UnlayerRendersTable   = "unlayer-renders";
+        private const string MjmlTemplatesTable    = "mjml-templates";
 
         private readonly AppSettings _settings;
         private readonly IAmazonDynamoDB _dynamo;
@@ -32,30 +40,69 @@ namespace UnlayerCache.API.Services
             _dynamo = dynamo;
         }
 
+        public async Task<MjmlTemplate> SaveMjmlTemplate(MjmlTemplate template)
+        {
+            await DynamoHelper.Save(new UnlayerCacheItem { Id = template.Id, Value = template.Body }, _dynamo, MjmlTemplatesTable, Int32.MaxValue);
+
+            return template;
+        }
+
+        public async Task<MjmlTemplate> GetMjmlTemplate(string id)
+        {
+            var template = await DynamoHelper.Get(id, _dynamo, MjmlTemplatesTable);
+
+            return template is null
+                ? null
+                : new MjmlTemplate
+                {
+                    Id = template.Id,
+                    Body = template.Value
+                };
+        }
+
+        public async Task<MjmlTemplate> UpdateMjmlTemplate(MjmlTemplate template)
+        {
+            await DynamoHelper.Save(new UnlayerCacheItem { Id = template.Id, Value = template.Body }, _dynamo, MjmlTemplatesTable, Int32.MaxValue);
+
+            return template;
+        }
+
+        public async Task DeleteMjmlTemplate(string id)
+        {
+            await DynamoHelper.Delete(id, _dynamo, MjmlTemplatesTable);
+        }
+
+        public async Task<IList<MjmlTemplate>> ListMjmlTemplates()
+        {
+            var results = await DynamoHelper.List(_dynamo, MjmlTemplatesTable);
+
+            return results.Select(item => new MjmlTemplate { Id = item.Id, Body = item.Value }).ToList();
+        }
+
         public async Task SaveUnlayerTemplate(UnlayerCacheItem model)
         {
-            await DynamoHelper<UnlayerCacheItem>.Save(model, _dynamo, UnlayerTemplatesTable, _settings.ExpiryInMinutes);
+            await DynamoHelper.Save(model, _dynamo, MjmlTemplatesTable, _settings.ExpiryInMinutes);
         }
 
         public async Task<string> GetUnlayerTemplate(string id)
         {
-            var result = await DynamoHelper<UnlayerCacheItem>.Get(id, _dynamo, UnlayerTemplatesTable);
+            var result = await DynamoHelper.Get(id, _dynamo, UnlayerTemplatesTable);
             return result?.Value;
         }
 
         public async Task SaveUnlayerRender(UnlayerCacheItem model)
         {
-            await DynamoHelper<UnlayerCacheItem>.Save(model, _dynamo, UnlayerRendersTable, _settings.ExpiryInMinutes);
+            await DynamoHelper.Save(model, _dynamo, UnlayerRendersTable, _settings.ExpiryInMinutes);
         }
 
         public async Task<UnlayerCacheItem> GetUnlayerRender(string id)
         {
-            return await DynamoHelper<UnlayerCacheItem>.Get(id, _dynamo, UnlayerRendersTable);
+            return await DynamoHelper.Get(id, _dynamo, UnlayerRendersTable);
         }
 
-        internal class DynamoHelper<T> where T: UnlayerCacheItem
+        internal class DynamoHelper
         {
-            public static async Task Save(T model, IAmazonDynamoDB dynamo, string table, int cacheExpiryInMinutes)
+            public static async Task Save(UnlayerCacheItem model, IAmazonDynamoDB dynamo, string table, int cacheExpiryInMinutes)
             {
                 var lst = new Dictionary<string, AttributeValue>
                 {
@@ -70,7 +117,7 @@ namespace UnlayerCache.API.Services
                 await dynamo.PutItemAsync(table, lst);
             }
 
-            public static async Task Delete(T model, IAmazonDynamoDB dynamo, string table)
+            public static async Task Delete(string id, IAmazonDynamoDB dynamo, string table)
             {
                 var request = new DeleteItemRequest
                 {
@@ -78,7 +125,7 @@ namespace UnlayerCache.API.Services
                     Key = new Dictionary<string, AttributeValue>
                     {
                         {
-                            UnlayerId, new AttributeValue { S =  model.Id }
+                            UnlayerId, new AttributeValue { S =  id }
                         }
                     }
                 };
@@ -86,12 +133,42 @@ namespace UnlayerCache.API.Services
                 await dynamo.DeleteItemAsync(request);
             }
 
-            public static async Task<T> Get(string id, IAmazonDynamoDB dynamo, string table)
+            public static async Task<IList<UnlayerCacheItem>> List(IAmazonDynamoDB dynamo, string table)
+            {
+                var lst = new List<UnlayerCacheItem>();
+
+                var request = new ScanRequest
+                {
+                    TableName = table
+                };
+
+                do
+                {
+                    var response = await dynamo.ScanAsync(request);
+                    foreach (var item in response.Items)
+                    {
+                        var r = new UnlayerCacheItem
+                        {
+                            Id = item[UnlayerId].S,
+                            ExpiresAt = Convert.ToInt64(item[UnlayerExpiresAt].N),
+                            Value = item[UnlayerValue].S
+                        };
+
+                        lst.Add(r);
+                    }
+
+                    request.ExclusiveStartKey = response.LastEvaluatedKey;
+                } while (request.ExclusiveStartKey is { Count: > 0 });
+
+                return lst;
+            }
+
+            public static async Task<UnlayerCacheItem> Get(string id, IAmazonDynamoDB dynamo, string table)
             {
                 var idCondition = new Condition
                 {
                     ComparisonOperator = ComparisonOperator.EQ,
-                    AttributeValueList = new List<AttributeValue> { new AttributeValue { S = id } }
+                    AttributeValueList = new List<AttributeValue> { new() { S = id } }
                 };
 
                 var request = new QueryRequest
@@ -123,12 +200,12 @@ namespace UnlayerCache.API.Services
                      * dynamo may have not automatically cleared the item
                      * based on the TTL. So we do the dirty work.
                      */
-                    await Delete((T)item, dynamo, table);
+                    await Delete(item.Id, dynamo, table);
 
                     return null;
                 }
 
-                return (T)item;
+                return item;
             }
         }
     }

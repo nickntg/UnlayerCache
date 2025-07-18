@@ -46,7 +46,7 @@ namespace UnlayerCache.API.Controllers
                 _logger.LogInformation("{id} not cached, going to unlayer", id);
                 var uncached = await _unlayerService.GetTemplate(auth, id);
 
-                if (uncached == null)
+                if (uncached is null)
                 {
 	                _logger.LogWarning("{id} not found", id);
                     return NotFound();
