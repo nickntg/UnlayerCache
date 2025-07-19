@@ -11,9 +11,11 @@ namespace UnlayerCache.API.Services
         Task<MjmlTemplate> CreateTemplate(MjmlTemplate template);
         Task<MjmlTemplate> UpdateTemplate(MjmlTemplate template);
         Task<MjmlTemplate> GetTemplate(string id);
+        Task<string> GetExpandedTemplate(string id);
         Task DeleteTemplate(string id);
         Task<IList<MjmlTemplate>> ListTemplates();
         Task<string> RenderTemplate(string id);
+        Task<string> RenderExpandedTemplate(string templateBody);
     }
     public class MjmlService : IMjmlService
     {
@@ -51,6 +53,18 @@ namespace UnlayerCache.API.Services
             return await _dynamoService.ListMjmlTemplates();
         }
 
+        public async Task<string> GetExpandedTemplate(string id)
+        {
+            try
+            {
+                return await ExpandMjmlIncludes(id);
+            }
+            catch (KeyNotFoundException)
+            {
+                return null;
+            }
+        }
+
         public async Task<string> RenderTemplate(string id)
         {
             try
@@ -58,6 +72,18 @@ namespace UnlayerCache.API.Services
                 var completeMjml = await ExpandMjmlIncludes(id);
 
                 return await _mjmlClient.RenderTemplate(completeMjml);
+            }
+            catch (KeyNotFoundException)
+            {
+                return null;
+            }
+        }
+
+        public async Task<string> RenderExpandedTemplate(string templateBody)
+        {
+            try
+            {
+                return await _mjmlClient.RenderTemplate(templateBody);
             }
             catch (KeyNotFoundException)
             {
