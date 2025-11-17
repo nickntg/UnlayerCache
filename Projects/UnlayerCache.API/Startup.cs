@@ -45,10 +45,15 @@ public class Startup
 	        options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename), true);
         });
 		services.AddHealthChecks();
-		var options = Configuration.GetAWSOptions();
-        services.AddScoped(_ => options.CreateServiceClient<IAmazonDynamoDB>());
+
+        var options = Configuration.GetAWSOptions();
+        services.AddDefaultAWSOptions(options);
+        services.AddAWSService<IAmazonDynamoDB>();
+
+        services.AddScoped<IMjmlClient, MjmlClient>();
         services.AddScoped<IDynamoService, DynamoService>();
         services.AddScoped<IUnlayerService, UnlayerService>();
+        services.AddScoped<IMjmlService, MjmlService>();
     }
 
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)

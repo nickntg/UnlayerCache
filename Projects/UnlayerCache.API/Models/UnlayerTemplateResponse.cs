@@ -8,6 +8,22 @@ namespace UnlayerCache.API.Models
         public Data data { get; set; }
     }
 
+    public class UnlayerTemplateResponseMocked
+    {
+        public bool success { get; set; }
+        public DataMocked data { get; set; }
+    }
+
+    public class DataMocked
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+        public string design { get; set; }
+        public string displayMode { get; set; }
+        public DateTime createdAt { get; set; }
+        public DateTime updatedAt { get; set; }
+    }
+
     public class Data
     {
         public int id { get; set; }

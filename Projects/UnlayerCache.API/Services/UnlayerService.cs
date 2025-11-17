@@ -29,7 +29,7 @@ namespace UnlayerCache.API.Services
             const string startBlockFlag = "START_BLOCK";
             const string endBlockFlag = "END_BLOCK";
 
-            if (mergeTags == null || mergeTags.Count == 0)
+            if (mergeTags is null || mergeTags.Count == 0)
             {
                 return;
             }
@@ -78,7 +78,7 @@ namespace UnlayerCache.API.Services
 
         public void LocalRender(JObject vanilla, Dictionary<string, string> mergeTags)
         {
-	        if (mergeTags == null || mergeTags.Keys.Count == 0)
+	        if (mergeTags is null || mergeTags.Keys.Count == 0)
 	        {
 		        return;
 	        }

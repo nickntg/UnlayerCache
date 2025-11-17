@@ -17,13 +17,16 @@ namespace UnlayerCache.API.Controllers
         private readonly ILogger         _logger;
         private readonly IDynamoService  _dynamoService;
         private readonly IUnlayerService _unlayerService;
+        private readonly IMjmlService    _mjmlService;
 
         public ExportController(IDynamoService dynamoService,
             IUnlayerService unlayerService,
+            IMjmlService mjmlService,
             ILogger<ExportController> logger)
         {
             _dynamoService = dynamoService;
             _unlayerService = unlayerService;
+            _mjmlService = mjmlService;
             _logger = logger;
         }
 
@@ -37,25 +40,48 @@ namespace UnlayerCache.API.Controllers
                 var o = (JObject)JsonConvert.DeserializeObject(request.ToString());
                 var displayMode = FindProperty(o, "displayMode");
                 
-                var design = JsonConvert.DeserializeObject(FindProperty(o, "design"));
+                var designString = FindProperty(o, "design");
+
                 var key =
-                    $"{auth}_{displayMode}_{Util.Hash.HashString(JsonConvert.SerializeObject(design))}";
+                    $"{auth}_{displayMode}_{Util.Hash.HashString(JsonConvert.SerializeObject(designString))}";
 
                 var cached = await _dynamoService.GetUnlayerRender(key);
-                if (cached == null)
+                if (cached is null)
                 {
                     _logger.LogInformation("Going to unlayer to get the clean render for {key}", key);
-                    /* We first request Unlayer to render the template without
-                     any merge tags of our own. In this way, we'll get a clean
-                     response that we can later reuse to do our own replacement. */
-                    var cleanRender = await _unlayerService.RenderTemplate(auth, new UnlayerRenderRequest
-                    {
-	                    design = design,
-	                    displayMode = displayMode,
-	                    mergeTags = new Dictionary<string, string>()
-                    });
 
-                    if (cleanRender == null)
+                    string cleanRender;
+
+                    if ("mjml".Equals(displayMode, StringComparison.InvariantCulture))
+                    {
+                        // Rendering as MJML.
+                        var mjmlRender = await _mjmlService.RenderExpandedTemplate(designString);
+
+                        cleanRender = JsonConvert.SerializeObject(new UnlayerRenderResponse
+                        {
+                            success = true,
+                            data = new RenderData
+                            {
+                                html = mjmlRender
+                            }
+                        });
+                    }
+                    else
+                    {
+                        /* We first request Unlayer to render the template without
+                           any merge tags of our own. In this way, we'll get a clean
+                           response that we can later reuse to do our own replacement. */
+                        var design = JsonConvert.DeserializeObject(FindProperty(o, "design"));
+
+                        cleanRender = await _unlayerService.RenderTemplate(auth, new UnlayerRenderRequest
+                        {
+                            design = design,
+                            displayMode = displayMode,
+                            mergeTags = new Dictionary<string, string>()
+                        });
+                    }
+
+                    if (cleanRender is null)
                     {
                         _logger.LogWarning("Unlayer responded with 422");
                         return UnprocessableEntity();

@@ -27,7 +27,7 @@ namespace UnlayerCache.API.Tests.Controllers
 		        .Returns(Task.FromResult(new UnlayerCacheItem
 			        { Value = GetJsonUnlayerCleanRenderResponse() }));
 
-            var controller = GetController(dynamo, new UnlayerService());
+            var controller = GetController(dynamo, new UnlayerService(), null);
 
             var o = new ExpandoObject();
             o.TryAdd("displayMode", "email");
@@ -47,7 +47,7 @@ namespace UnlayerCache.API.Tests.Controllers
         }
 
         [Fact]
-        public void NotFoundInCache()
+        public void NotFoundInCacheUnlayerTemplate()
         {
 	        var dynamo = A.Fake<IDynamoService>(x => x.Strict());
 	        A.CallTo(() => dynamo.GetUnlayerRender(A<string>.Ignored))
@@ -69,7 +69,7 @@ namespace UnlayerCache.API.Tests.Controllers
                     new UnlayerService().LocalRender(response, request);
                 });
 
-            var controller = GetController(dynamo, unlayer);
+            var controller = GetController(dynamo, unlayer, null);
 
             var o = new ExpandoObject();
             o.TryAdd("displayMode", "email");
@@ -92,7 +92,62 @@ namespace UnlayerCache.API.Tests.Controllers
 				.MustHaveHappenedOnceExactly();
 			A.CallTo(() => unlayer.LocalRender(A<JObject>.Ignored, A<Dictionary<string, string>>.Ignored))
 				.MustHaveHappenedOnceExactly();
-		}
+            A.CallTo(() => unlayer.LocalRender(A<JObject>.Ignored, A<List<Dictionary<string, string>>>.Ignored))
+                .MustHaveHappenedOnceExactly();
+
+        }
+
+        [Fact]
+        public void NotFoundInCacheMjmlTemplate()
+        {
+            var dynamo = A.Fake<IDynamoService>(x => x.Strict());
+            A.CallTo(() => dynamo.GetUnlayerRender(A<string>.Ignored))
+                .Returns(Task.FromResult((UnlayerCacheItem)null));
+            A.CallTo(() => dynamo.SaveUnlayerRender(A<UnlayerCacheItem>.Ignored))
+                .Returns(Task.CompletedTask);
+
+            var unlayer = A.Fake<IUnlayerService>(x => x.Strict());
+            A.CallTo(() => unlayer.LocalRender(A<JObject>.Ignored, A<Dictionary<string, string>>.Ignored))
+                .Invokes((JObject response, Dictionary<string, string> request) =>
+                {
+                    new UnlayerService().LocalRender(response, request);
+                });
+            A.CallTo(() => unlayer.LocalRender(A<JObject>.Ignored, A<List<Dictionary<string, string>>>.Ignored))
+                .Invokes((JObject response, List<Dictionary<string, string>> request) =>
+                {
+                    new UnlayerService().LocalRender(response, request);
+                });
+
+            var mjmlService = A.Fake<IMjmlService>(x => x.Strict());
+            A.CallTo(() => mjmlService.RenderExpandedTemplate(A<string>.Ignored))
+                .Returns(TestContent);
+
+            var controller = GetController(dynamo, unlayer, mjmlService);
+
+            var o = new ExpandoObject();
+            o.TryAdd("displayMode", "mjml");
+            o.TryAdd("mergeTags", new Dictionary<string, string> { { "a", "replaced" } });
+            o.TryAdd("design", "{\"some\": \"design\"}");
+            var result = controller.Post(JsonConvert.SerializeObject(o)).Result;
+
+            Assert.NotNull(result);
+
+            var r = result as OkObjectResult;
+            Assert.NotNull(r);
+
+            Assert.Contains(ReplacedTestContent, JsonConvert.SerializeObject(r.Value));
+
+            A.CallTo(() => dynamo.GetUnlayerRender(A<string>.Ignored))
+                .MustHaveHappenedOnceExactly();
+            A.CallTo(() => dynamo.SaveUnlayerRender(A<UnlayerCacheItem>.Ignored))
+                .MustHaveHappenedOnceExactly();
+            A.CallTo(() => mjmlService.RenderExpandedTemplate(A<string>.Ignored))
+                .MustHaveHappenedOnceExactly();
+            A.CallTo(() => unlayer.LocalRender(A<JObject>.Ignored, A<Dictionary<string, string>>.Ignored))
+                .MustHaveHappenedOnceExactly();
+            A.CallTo(() => unlayer.LocalRender(A<JObject>.Ignored, A<List<Dictionary<string, string>>>.Ignored))
+                .MustHaveHappenedOnceExactly();
+        }
 
         [Fact]
         public void NotFoundInCacheAndUnlayerThrows422()
@@ -105,7 +160,7 @@ namespace UnlayerCache.API.Tests.Controllers
 			A.CallTo(() => unlayer.RenderTemplate(A<string>.Ignored, A<UnlayerRenderRequest>.Ignored))
 				.Returns(Task.FromResult((string)null));
 
-            var controller = GetController(dynamo, unlayer);
+            var controller = GetController(dynamo, unlayer, null);
             
             var o = new ExpandoObject();
             o.TryAdd("displayMode", "email");
@@ -131,7 +186,7 @@ namespace UnlayerCache.API.Tests.Controllers
 	        A.CallTo(() => dynamo.GetUnlayerRender(A<string>.Ignored))
 		        .Throws<InvalidOperationException>();
 
-            var controller = GetController(dynamo, null);
+            var controller = GetController(dynamo, null, null);
 
             var o = new ExpandoObject();
             o.TryAdd("displayMode", "email");
@@ -149,9 +204,9 @@ namespace UnlayerCache.API.Tests.Controllers
 				.MustHaveHappenedOnceExactly();
 		}
 
-        private ExportController GetController(IDynamoService dynamo, IUnlayerService unlayer)
+        private ExportController GetController(IDynamoService dynamo, IUnlayerService unlayer, IMjmlService mjmlService)
         {
-            return new ExportController(dynamo, unlayer, new NullLogger<ExportController>())
+            return new ExportController(dynamo, unlayer, mjmlService, new NullLogger<ExportController>())
             {
                 ControllerContext = MockingHelpers.GetControllerContext()
             };
